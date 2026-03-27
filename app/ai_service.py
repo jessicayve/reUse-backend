@@ -73,6 +73,25 @@ Rules:
 - If decision is "recycle", provide a simple recyclingTip telling the user not to throw it in regular trash and to check a recycling bin, collection point, or local recycling rules.
 - If decision is not "recycle", recyclingTip must be an empty string.
 - Keep localDisposalGuidance general and practical. Do not invent specific addresses or institutions.
+
+Decision logic:
+- Choose "donate" only if the item is still clean, safe, and usable by another person without repair.
+- If the item is worn, torn, raggedy, stained, broken, damaged, or visibly degraded, do not choose "donate".
+- Choose "repair" only if the object can realistically be fixed and used again with reasonable effort.
+- Choose "reuse" when the item is no longer suitable for donation but can still be repurposed for DIY, crafts, storage, cleaning, or another practical use.
+- Choose "recycle" only when the object is no longer suitable for donate, repair, or reuse.
+
+Special rule for clothes and fabric items:
+- Choose "donate" only if wearable and in good condition.
+- Choose "repair" if minor damage can realistically be fixed.
+- Choose "reuse" if too worn for donation but still useful for rags, crafts, patches, bags, or upcycling.
+- Choose "recycle" only if unusable even for practical fabric reuse.
+
+Reuse ideas:
+- If decision is "reuse", provide 3 practical DIY or repurposing ideas that match the object and its condition.
+- If decision is "repair", provide 3 simple ideas related to fixing, reinforcing, or extending the item's life.
+- If decision is "donate", provide 3 simple ideas related to donating, passing it on, or preparing it for reuse by others.
+- If decision is "recycle", provide 3 simple ideas related to sorting, disassembling if appropriate, or preparing it for correct recycling.
 """
 
     schema = {
@@ -196,6 +215,58 @@ Rules:
     if decision not in {"reuse", "repair", "donate", "recycle"}:
         decision = "reuse"
         parsed["decision"] = "reuse"
+
+    condition = str(parsed.get("condition", "")).lower()
+    material_type = str(parsed.get("materialType", "")).lower()
+    object_name = str(parsed.get("objectName", "")).lower()
+
+    bad_conditions = {
+        "worn",
+        "torn",
+        "raggedy",
+        "damaged",
+        "broken",
+        "stained",
+        "dirty",
+        "ripped",
+        "frayed",
+        "old",
+        "heavily worn",
+        "very worn",
+        "visibly damaged",
+        "worn and torn",
+        "worn, torn"
+    }
+
+    fabric_like_objects = {
+        "shirt", "t-shirt", "tshirt", "pants", "jeans", "dress", "skirt", "jacket",
+        "hoodie", "sweater", "fabric", "cloth", "clothing", "clothes", "textile"
+    }
+
+    is_bad_condition = any(term in condition for term in bad_conditions)
+    is_fabric_item = material_type == "fabric" or object_name in fabric_like_objects
+
+    if decision == "donate" and is_bad_condition:
+        if is_fabric_item:
+            parsed["decision"] = "reuse"
+            parsed["reason"] = "Too worn for donation but still suitable for practical DIY reuse."
+            parsed["disposalCategory"] = "textile reuse"
+            parsed["reuseIdeas"] = [
+                "Use it as cleaning rags",
+                "Turn it into a reusable bag",
+                "Cut it into pieces for craft projects"
+            ]
+        else:
+            parsed["decision"] = "reuse"
+            parsed["reason"] = "Too damaged for donation but still suitable for practical repurposing."
+            parsed["disposalCategory"] = "general reuse"
+            parsed["reuseIdeas"] = [
+                "Repurpose it for storage",
+                "Use parts of it in a DIY project",
+                "Reuse it for household organization"
+            ]
+
+    decision = parsed.get("decision", "reuse")
 
     if decision == "recycle":
         if not parsed.get("recyclingTip"):
